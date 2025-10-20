@@ -1,11 +1,15 @@
 #include <climits>
-#include "arch_types.h"
 #include "rr_graph_storage.h"
 #include "physical_types.h"
+#include "rr_edge.h"
+#include "rr_graph_fwd.h"
 #include "vtr_error.h"
 #include "librrgraph_types.h"
+#include "vtr_util.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <vector>
 
 void t_rr_graph_storage::reserve_edges(size_t num_edges) {
     edge_src_node_.reserve(num_edges);
@@ -54,6 +58,69 @@ void t_rr_graph_storage::alloc_and_load_edges(const t_rr_edge_info_set* rr_edges
             new_edge.switch_type,
             new_edge.remapped);
     }
+}
+
+namespace  {
+struct t_index_remove_functor {
+    size_t erase_pos;
+    size_t current_index;
+    const std::vector<RREdgeId>& rr_edges_to_remove;
+
+    t_index_remove_functor() = delete;
+
+    t_index_remove_functor(const std::vector<RREdgeId>& rr_edges)
+        : erase_pos(0),
+          current_index(0),
+          rr_edges_to_remove(rr_edges) {}
+
+    template <typename T>
+    bool operator()(const T&) {
+        bool erase = (erase_pos < rr_edges_to_remove.size() &&
+                      current_index == static_cast<size_t>(rr_edges_to_remove[erase_pos]));
+        ++current_index;
+        if (erase) {
+            ++erase_pos;
+        }
+        return erase;
+    }
+
+    void reset() {
+        current_index = 0;
+        erase_pos = 0;
+    }
+};
+} // namespace
+
+void t_rr_graph_storage::remove_edges(std::vector<RREdgeId> rr_edges_to_remove) {
+    vtr::uniquify(rr_edges_to_remove);
+
+
+    t_index_remove_functor should_remove(rr_edges_to_remove);
+
+    edge_dest_node_.erase(
+        std::remove_if(edge_dest_node_.begin(), edge_dest_node_.end(), should_remove),
+        edge_dest_node_.end()
+    );
+
+    should_remove.reset();
+    edge_src_node_.erase(
+        std::remove_if(edge_src_node_.begin(), edge_src_node_.end(), should_remove),
+        edge_src_node_.end()
+    );
+
+    should_remove.reset();
+    edge_switch_.erase(
+        std::remove_if(edge_switch_.begin(), edge_switch_.end(), should_remove),
+        edge_switch_.end()
+    );
+
+    should_remove.reset();
+    edge_remapped_.erase(
+        std::remove_if(edge_remapped_.begin(), edge_remapped_.end(), should_remove),
+        edge_remapped_.end()
+    );
+
+
 }
 
 /* edge_swapper / edge_sort_iterator / edge_compare_src_node_and_configurable_first

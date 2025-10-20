@@ -7,6 +7,7 @@
 #include "get_parallel_segs.h"
 #include "physical_types.h"
 #include "physical_types_util.h"
+#include "rr_graph_fwd.h"
 #include "rr_graph_view.h"
 #include "rr_rc_data.h"
 #include "switchblock_types.h"
@@ -43,6 +44,8 @@
 
 #include "rr_types.h"
 #include "rr_node_indices.h"
+
+#include "interposer_cut.h"
 
 //#define VERBOSE
 //used for getting the exact count of each edge type and printing it to std out.
@@ -1596,6 +1599,11 @@ static std::function<void(t_chan_width*)> alloc_and_load_rr_graph(RRGraphBuilder
         num_edges += des_3d_rr_edges_to_create.size();
         des_3d_rr_edges_to_create.clear();
     }
+
+    // HERE BE CUTTING DRAGONS
+    DeviceContext& mutable_device = g_vpr_ctx.mutable_device();
+    std::vector<RREdgeId> interposer_edges = mark_interposer_cut_edges_for_removal(mutable_device.rr_graph, grid);
+    mutable_device.rr_graph_builder.remove_edges(interposer_edges);
 
     VTR_LOGV(route_verbosity > 1, "CHAN->CHAN type edge count:%d\n", num_edges);
 

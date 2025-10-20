@@ -775,6 +775,8 @@ class t_rr_graph_storage {
     /** @brief Adds a batch of edges.*/
     void alloc_and_load_edges(const t_rr_edge_info_set* rr_edges_to_create);
 
+    void remove_edges(const std::vector<RREdgeId> rr_edges_to_remove);
+
     /* Edge finalization methods */
 
     /** @brief Counts the number of rr switches needed based on fan in to support mux
