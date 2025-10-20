@@ -62,9 +62,11 @@
 #include "metadata_storage.h"
 #include "rr_node.h"
 #include "physical_types.h"
+#include "rr_node_types.h"
 #include "rr_spatial_lookup.h"
 #include "vtr_geometry.h"
 #include "rr_graph_utils.h"
+#include "vtr_range.h"
 
 class RRGraphView {
     /* -- Constructors -- */
@@ -585,6 +587,11 @@ class RRGraphView {
     inline edge_idx_range edges(const RRNodeId& id) const {
         return vtr::make_range(edge_idx_iterator(0), edge_idx_iterator(num_edges(id)));
     }
+
+    inline vtr::StrongIdRange<RREdgeId> all_edges() const {
+        return node_storage_.all_edges();
+    }
+
 
     /**
      * @brief Return ID range for outgoing edges.

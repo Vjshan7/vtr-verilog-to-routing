@@ -394,6 +394,11 @@ class t_rr_graph_storage {
         return vtr::StrongIdRange<RREdgeId>(first_edge(id), last_edge(id));
     }
 
+
+    inline vtr::StrongIdRange<RREdgeId> all_edges() const {
+        return vtr::StrongIdRange<RREdgeId>(RREdgeId(0), RREdgeId(edge_src_node_.size()));
+    }
+
     /** @brief Retrieve the RREdgeId for iedge'th edge in RRNodeId.
      *
      * This method should generally not be used, and instead first_edge and
