@@ -1,23 +1,26 @@
 #!/bin/bash
 # ============================================================
-# VTR / VPR Native Installation Script (Ubuntu 22.04 / 24.04)
-# Mirrors the same setup used in the Dockerfile
+# VTR / VPR Environment Setup Script (for DSE_FPGA repo)
+# Compatible with Ubuntu 22.04 / 24.04
+# Uses submodule at: vtr-verilog-to-routing/
+# Mirrors the Dockerfile setup
 # ============================================================
 
 set -e  # Exit on first error
 set -o pipefail
 
 echo "==========================================="
-echo "  Setting up VTR/VPR Environment (Linux)"
+echo " Setting up VTR/VPR Environment (Linux)"
+echo " Repo: DSE_FPGA / vtr-verilog-to-routing"
 echo "==========================================="
 
 # --------------------------------------------
-# 1. Update and basic tools
+# 1. Update & install core system tools
 # --------------------------------------------
 echo "[1/6] Updating package index..."
 sudo apt-get update -qq
 
-echo "[2/6] Installing core build tools and utilities..."
+echo "[2/6] Installing core build tools..."
 sudo apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -34,9 +37,9 @@ sudo apt-get install -y --no-install-recommends \
     time
 
 # --------------------------------------------
-# 2. Install libraries used by VTR
+# 2. Install dependencies required by VTR
 # --------------------------------------------
-echo "[3/6] Installing library dependencies (C++, graphics, etc.)..."
+echo "[3/6] Installing C++ and graphics dependencies..."
 sudo apt-get install -y --no-install-recommends \
     bison \
     flex \
@@ -63,7 +66,7 @@ sudo apt-get install -y --no-install-recommends \
     libssl-dev
 
 # --------------------------------------------
-# 3. Optional: install clang-format if available
+# 3. Optional clang-format (if available)
 # --------------------------------------------
 if apt-cache search '^clang-format-18$' | grep -q 'clang-format-18'; then
     echo "[4/6] Installing clang-format-18..."
@@ -73,15 +76,18 @@ else
 fi
 
 # --------------------------------------------
-# 4. Clone VTR repository (if not already)
+# 4. Ensure submodule exists
 # --------------------------------------------
 if [ ! -d "vtr-verilog-to-routing" ]; then
-    echo "[5/6] Cloning VTR repository..."
-    git clone --recursive https://github.com/verilog-to-routing/vtr-verilog-to-routing.git
+    echo "[5/6] ERROR: vtr-verilog-to-routing submodule not found!"
+    echo "Please initialize it first using:"
+    echo "  git submodule update --init --recursive"
+    exit 1
 else
-    echo "[5/6] VTR directory already exists, skipping clone..."
+    echo "[5/6] vtr-verilog-to-routing found, proceeding with build..."
 fi
 
+# Navigate into the submodule
 cd vtr-verilog-to-routing
 
 # --------------------------------------------
@@ -96,15 +102,15 @@ make -j$(nproc)
 sudo make install
 
 # --------------------------------------------
-# 6. Post-install message
+# 6. Success message
 # --------------------------------------------
 echo "==========================================="
-echo "VTR/VPR successfully installed!"
+echo " VTR/VPR successfully built and installed!"
 echo "==========================================="
-echo "To test your installation, run:"
+echo "You can test it using:"
 echo ""
 echo "  ./build/vpr/vpr vtr_flow/arch/timing/k6_N10_mem32K_40nm.xml \\"
 echo "      vtr_flow/benchmarks/blif/alu4.blif --disp on"
 echo ""
-echo "If you are using a desktop environment, the GUI should open automatically."
+echo "If you’re on a GUI-enabled system, VPR’s graphics window will appear."
 echo ""
