@@ -1,31 +1,78 @@
 FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
-# set out workspace
+
+# ------------------------------------------------------------------------------
+#  1. Base setup
+# ------------------------------------------------------------------------------
 ENV WORKSPACE=/workspace
 RUN mkdir -p ${WORKSPACE}
 WORKDIR ${WORKSPACE}
 COPY . ${WORKSPACE}
-# Required to bypass Python's protection on system-wide package installations in Ubuntu 23.04+.
-# This allows pip to install packages globally without using a virtual environment.
+
+# Allow pip to install system-wide (Ubuntu 23+ restriction)
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
-# Install and cleanup is done in one command to minimize the build cache size
-RUN apt-get update -qq \
-# Extract package names from install_apt_packages.sh
-    && sed '/sudo/d' install_apt_packages.sh | sed '/#/d' | sed '/packages_to_install/d' | sed '/)/d' | sed '/if\s.*then$/d' | sed '/else$/d' | sed '/fi$/d' | sed '/echo\s/d' | sed 's/ \\//g' | sed '/^$/d' | sed '/^[[:space:]]*$/d' | sed 's/\s//g' \
-# Install packages
-    | xargs apt-get -y install --no-install-recommends \
-# Additional packages not listed in install_apt_packages.sh
-    && apt-get -y install --no-install-recommends \
-    wget \
-    ninja-build \
-    python3-pip \
-    time \
-# Install python packages
-    && pip install -r requirements.txt \
-# Cleanup
-    && apt-get autoclean && apt-get clean && apt-get -y autoremove \
-    && rm -rf /var/lib/apt/lists/*
-# Build VTR
-RUN rm -rf build && make -j$(nproc) && make install
-# Container's default launch command
+
+# ------------------------------------------------------------------------------
+#  2. Install dependencies
+# ------------------------------------------------------------------------------
+RUN apt-get update -qq && \
+    apt-get -y install --no-install-recommends \
+        dos2unix \
+        wget \
+        git \
+        ninja-build \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        cmake \
+        pkg-config \
+        bison \
+        flex \
+        libxml2-utils \
+        libtbb-dev \
+        libeigen3-dev \
+        libx11-dev \
+        libxrender-dev \
+        libxrandr-dev \
+        libxi-dev \
+        libxft-dev \
+        libxext-dev \
+        libglu1-mesa-dev \
+        libgl1-mesa-dev \
+        libgtk-3-dev \
+        openssl \
+        libssl-dev \
+        time && \
+    apt-get autoclean && apt-get clean && apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------------------
+#  3. Install Python requirements (if present)
+# ------------------------------------------------------------------------------
+RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+# ------------------------------------------------------------------------------
+#  4. Initialize submodules (to get arch + benchmarks)
+# ------------------------------------------------------------------------------
+RUN git submodule update --init --recursive
+
+# ------------------------------------------------------------------------------
+#  5. Build VTR cleanly using CMake
+# ------------------------------------------------------------------------------
+RUN rm -rf build && mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    make install
+
+# ------------------------------------------------------------------------------
+#  6. Environment setup
+# ------------------------------------------------------------------------------
+ENV PATH="${WORKSPACE}/build/vpr:${WORKSPACE}/build/vtr:${WORKSPACE}/vtr_flow/scripts:${PATH}"
+WORKDIR ${WORKSPACE}
 SHELL ["/bin/bash", "-c"]
+
+# ------------------------------------------------------------------------------
+#  7. Default interactive mode
+# ------------------------------------------------------------------------------
+ENTRYPOINT ["/bin/bash"]
+CMD ["-i"]
